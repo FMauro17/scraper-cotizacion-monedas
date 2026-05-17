@@ -1,0 +1,17 @@
+# IMAGEN BASE DE PYTHON
+FROM python:3.13-slim
+
+# DIRECTORIO DE TRABAJO DENTRO DEL CONTENEDOR
+WORKDIR /app
+
+# COPIAMOS EL ARCHIVO DE DEPENDENCIAS
+COPY requirements.txt .
+
+# INSTALAMOS LAS DEPENDENCIAS
+RUN pip install --no-cache-dir -r requirements.txt
+
+# COPIAMOS EL SCRIPT PRINCIPAL
+COPY scraper_monedas.py .
+
+# COMANDO QUE SE EJECUTA CUANDO ARRANCA EL CONTENEDOR
+CMD ["python", "scraper_monedas.py"] 
