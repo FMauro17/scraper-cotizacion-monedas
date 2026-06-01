@@ -14,6 +14,12 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime, timezone
+import psycopg2
+from dotenv import load_dotenv
+import os
+
+# CARGAMOS LAS VARIABLES DE ENTORNO DEL ARCHIVO .env:
+load_dotenv()
 
 # URL DE LA PAGINA QUE VAMOS A SCRAPEAR:
 URL = "https://iol.invertironline.com/mercado/cotizaciones/argentina/monedas"
@@ -77,3 +83,57 @@ df = df[["moneda", "compra", "venta", "fecha", "variacion", "timestamp"]]
 # MOSTRAMOS EL DataFrame COMPLETO:
 print(df.to_string()) 
 
+# CONEXION A POSTGRESQL:
+conn = psycopg2.connect(
+    host="localhost",
+    port=5433,
+    dbname="cotizaciones_db",
+    user="postgres",
+    password=os.getenv("DB_PASSWORD")
+)
+
+# CREAMOS UN CURSOR PARA EJECUTAR COMANDOS SQL:
+cursor = conn.cursor()
+
+print("Conexion a PostgreSQL exitosa") 
+
+# CREAMOS LA TABLA SI NO EXISTE:
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cotizaciones (
+        id SERIAL PRIMARY KEY,
+        moneda VARCHAR(100),
+        compra VARCHAR(50),
+        venta VARCHAR(50),
+        fecha VARCHAR(50),
+        variacion VARCHAR(50),
+        timestamp TIMESTAMPTZ
+    )
+""")
+
+print("Tabla cotizaciones lista") 
+
+# LIMPIAMOS LA TABLA ANTES DE INSERTAR PARA EVITAR DUPLICADOS:
+cursor.execute("TRUNCATE TABLE cotizaciones RESTART IDENTITY")
+
+# INSERTAMOS LOS DATOS DEL DATAFRAME EN POSTGRESQL:
+for index, fila in df.iterrows():
+    cursor.execute("""
+        INSERT INTO cotizaciones (moneda, compra, venta, fecha, variacion, timestamp)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (
+        fila["moneda"],
+        fila["compra"],
+        fila["venta"],
+        fila["fecha"],
+        fila["variacion"],
+        fila["timestamp"]
+    ))
+
+# CONFIRMAMOS LOS CAMBIOS EN LA BASE DE DATOS:
+conn.commit()
+
+# CERRAMOS EL CURSOR Y LA CONEXION:
+cursor.close()
+conn.close()
+
+print("Datos insertados correctamente en PostgreSQL") 
